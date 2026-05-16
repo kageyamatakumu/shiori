@@ -1,19 +1,22 @@
 use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
+use crate::domain::CollisionStrategy;
+
 #[derive(Debug, Clone)]
 pub struct TargetFolder {
     path: PathBuf,
 }
 
 impl TargetFolder {
-    pub fn new(base: &Path, path: PathBuf) -> Result<Self> {
-        Self::validate(base, &path)?;
+    pub fn new(base: &Path, original_path: PathBuf, strategy: &dyn CollisionStrategy) -> Result<Self> {
+        let final_path = strategy.resolve(original_path)?;
+        Self::validate_bounds(base, &final_path)?;
 
-        Ok(Self { path })
+        Ok(Self { path: final_path })
     }
 
-    fn validate(base: &Path, path: &Path) -> Result<()> {
+    fn validate_bounds(base: &Path, path: &Path) -> Result<()> {
         if !path.starts_with(base) {
             bail!("⚠️ 整理先フォルダの外には移動できません");
         }

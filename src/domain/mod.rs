@@ -1,3 +1,4 @@
+pub mod collision_strategy;
 pub mod extension;
 pub mod file_name;
 pub mod file_organizer;
@@ -7,6 +8,7 @@ pub mod move_report;
 pub mod move_strategy;
 pub mod target_folder;
 
+pub use collision_strategy::{CollisionStrategy, SequenceRenameStrategy};
 pub use extension::Extension;
 pub use file_name::FileName;
 pub use file_organizer::FileOrganizer;

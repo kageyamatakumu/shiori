@@ -1,5 +1,8 @@
 use crate::application::organize_mode::OrganizeMode;
-use crate::domain::{FileName, FileOrganizer, FileQuery, FolderName, TargetFolder};
+use crate::domain::collision_strategy::SequenceRenameStrategy;
+use crate::domain::{
+    CollisionStrategy, FileName, FileOrganizer, FileQuery, FolderName, TargetFolder,
+};
 use anyhow::Result;
 use colored::*;
 use std::io::{self, Write};
@@ -9,6 +12,7 @@ use std::io::{self, Write};
 /// ユーザーとの対話（入力・確認）と、ドメインロジックの実行フローを制御します。
 pub struct App {
     organizer: FileOrganizer,
+    strategy: Box<dyn CollisionStrategy>,
 }
 
 impl App {
@@ -22,6 +26,7 @@ impl App {
     pub fn new() -> Result<Self> {
         Ok(Self {
             organizer: FileOrganizer::new()?,
+            strategy: Box::new(SequenceRenameStrategy::new()),
         })
     }
 
@@ -85,25 +90,47 @@ impl App {
         let raw_input = prompt_input("整理先のフォルダ名を入力してください: ")?;
         let folder_name = FolderName::new(&raw_input)?;
 
-        // 類似フォルダのチェックとユーザーへの警告
-        let similar = self
-            .organizer
-            .find_similar_folders(self.organizer.work_path(), &folder_name)?;
-        if !similar.is_empty() {
-            println!("\n💡 似た名前のフォルダが見つかりました:");
-            for path in &similar {
-                println!("  - {}", path.display());
-            }
-            if !confirm("このまま新しいフォルダとして作成しますか？ (y/n): ")?
-            {
-                return Err(anyhow::anyhow!("ユーザーにより中止されました"));
+        let base_path = self.organizer.work_path();
+        let expected_path = base_path.join(folder_name.as_str());
+
+        // 「完全に同じ名前」が存在しない場合のみ類似チェックを行う
+        // （完全一致する場合は自動リネームに任せるため警告をスキップ）
+        if !expected_path.exists() {
+            let similar = self
+                .organizer
+                .find_similar_folders(base_path, &folder_name)?;
+            if !similar.is_empty() {
+                println!("\n💡 似た名前のフォルダが見つかりました:");
+                for path in &similar {
+                    println!("  - {}", path.display());
+                }
+                if !confirm("このまま新しいフォルダとして作成しますか？ (y/n): ")?
+                {
+                    return Err(anyhow::anyhow!("ユーザーにより中止されました"));
+                }
             }
         }
 
-        TargetFolder::new(
-            self.organizer.work_path(),
-            self.organizer.work_path().join(folder_name.as_str()),
-        )
+        let target_folder = TargetFolder::new(base_path, expected_path.clone(), &*self.strategy)?;
+
+        // 自動リネームが発生したかチェックしてユーザーに通知
+        if target_folder.path() != expected_path {
+            let adjusted_name = target_folder
+                .path()
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            println!(
+                "{}",
+                format!(
+                    "📝 同名フォルダが存在するため、名称を調整しました: {}",
+                    adjusted_name
+                )
+                .yellow()
+            );
+        }
+
+        Ok(target_folder)
     }
 
     /// ユーザーの検索条件に基づいて移動対象ファイルを抽出します。
