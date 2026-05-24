@@ -10,4 +10,6 @@ pub trait FileSystem {
     fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>>;
 
     fn move_file(&self, from: &Path, to: &Path) -> Result<()>;
+
+    fn is_dir(&self, path: &Path) -> bool;
 }

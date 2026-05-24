@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use std::fs::{self};
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
+use std::sync::Arc;
 
-use crate::domain::MoveReport;
 use crate::domain::move_strategy::{DryRunStrategy, MoveStrategy, RealMoveStrategy};
+use crate::domain::{FileSystem, MoveReport};
 use crate::{FileName, TargetFolder};
 
 use super::FileQuery;
@@ -18,6 +19,8 @@ pub struct FileOrganizer {
     work_path: PathBuf,
     /// 整理対象（スキャン対象）となるダウンロードフォルダ自体のパス
     download_path: PathBuf,
+    /// ファイルシステム操作を抽象化するためのインターフェース
+    fs: Arc<dyn FileSystem>,
 }
 
 impl FileOrganizer {
@@ -26,13 +29,14 @@ impl FileOrganizer {
     /// # Errors
     ///
     /// オペレーティングシステムからダウンロードフォルダのパスを取得できない場合にエラーを返します。
-    pub fn new() -> Result<Self> {
+    pub fn new(fs: Arc<dyn FileSystem>) -> Result<Self> {
         let download_path = dirs::download_dir().context("ダウンロードフォルダが見つかりません")?;
 
         Ok(Self {
             // 現在は固定で "test_storage" を使用。将来的に設定ファイル等で変更可能にすることも検討
             work_path: download_path.join("test_storage"),
             download_path,
+            fs,
         })
     }
 
@@ -54,7 +58,9 @@ impl FileOrganizer {
     pub fn ensure_work_path(&self) -> Result<()> {
         if !self.work_path.exists() {
             println!("📁 {:?} を作成します。", self.work_path);
-            fs::create_dir_all(&self.work_path).context("整理先フォルダの作成に失敗")?;
+            self.fs
+                .create_dir_all(&self.work_path)
+                .context("整理先フォルダの作成に失敗")?;
         }
         Ok(())
     }
@@ -122,11 +128,8 @@ impl FileOrganizer {
         let mut matches = Vec::new();
         let target = target_name.normalized();
 
-        for entry in fs::read_dir(parent)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if !path.is_dir() {
+        for path in self.fs.read_dir(parent)? {
+            if !self.fs.is_dir(&path) {
                 continue;
             }
 
@@ -138,6 +141,7 @@ impl FileOrganizer {
                 matches.push(path);
             }
         }
+
         Ok(matches)
     }
 
@@ -147,10 +151,7 @@ impl FileOrganizer {
     pub fn find_matching_files(&self, query: &FileQuery) -> Result<Vec<FileName>> {
         let mut matched_files = Vec::new();
 
-        for entry in fs::read_dir(&self.download_path)? {
-            let entry = entry?;
-            let path = entry.path();
-
+        for path in self.fs.read_dir(&self.download_path)? {
             if path == self.work_path || !path.is_file() {
                 continue;
             }
@@ -191,7 +192,7 @@ impl FileOrganizer {
             let ext_folder = base_folder.path().join(ext.as_str());
 
             if !strategy.is_dry_run() && !ext_folder.exists() {
-                fs::create_dir_all(&ext_folder)?;
+                self.fs.create_dir_all(&ext_folder)?;
             }
 
             let destination = ext_folder.join(file.original());

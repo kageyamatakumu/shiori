@@ -1,11 +1,11 @@
 use crate::application::organize_mode::OrganizeMode;
-use crate::domain::collision_strategy::SequenceRenameStrategy;
 use crate::domain::{
-    CollisionStrategy, FileName, FileOrganizer, FileQuery, FolderName, TargetFolder,
+    CollisionStrategy, FileName, FileOrganizer, FileQuery, FileSystem, FolderName, TargetFolder,
 };
 use anyhow::Result;
 use colored::*;
 use std::io::{self, Write};
+use std::sync::Arc;
 
 /// `Shiori` アプリケーションの実行を管理するメイン構造体。
 ///
@@ -13,6 +13,7 @@ use std::io::{self, Write};
 pub struct App {
     organizer: FileOrganizer,
     strategy: Box<dyn CollisionStrategy>,
+    fs: Arc<dyn FileSystem>, // Removed as it is unused
 }
 
 impl App {
@@ -23,11 +24,16 @@ impl App {
     /// # Errors
     ///
     /// ホームディレクトリの取得に失敗した場合や、環境設定に不備がある場合にエラーを返します。
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            organizer: FileOrganizer::new()?,
-            strategy: Box::new(SequenceRenameStrategy::new()),
-        })
+    pub fn new(
+        organizer: FileOrganizer,
+        strategy: Box<dyn CollisionStrategy>,
+        fs: Arc<dyn FileSystem>,
+    ) -> Self {
+        Self {
+            organizer,
+            strategy,
+            fs,
+        }
     }
 
     /// アプリケーションのメイン実行フローを開始します。
@@ -199,8 +205,8 @@ impl App {
             "\n🚀 上記の内容で実際に移動を開始しますか？ ({}) (y/n): ",
             "本番実行".red().bold()
         ))? {
-            if !target_folder.path().exists() {
-                std::fs::create_dir_all(target_folder.path())?;
+            if !self.fs.exists(target_folder.path())? {
+                self.fs.create_dir_all(target_folder.path())?;
             }
             match mode {
                 OrganizeMode::Normal => {

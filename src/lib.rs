@@ -11,7 +11,7 @@ pub use domain::MoveReport;
 pub use domain::MoveStrategy;
 pub use domain::TargetFolder;
 
-pub use infrastructure::file_system::FileSystem;
+pub use domain::CollisionStrategy;
 
 pub use application::App;
 pub use application::OrganizeMode;
