@@ -74,11 +74,11 @@ impl App {
         println!("=== Design Porter: ファイル整理ツール ===");
         println!(
             "📂 ダウンロードフォルダ: {}",
-            self.organizer.download_path().display()
+            self.fs.format_display_path(self.organizer.download_path())
         );
         println!(
             "📁 整理先の親フォルダ: {}",
-            self.organizer.work_path().display()
+            self.fs.format_display_path(self.organizer.work_path())
         );
         Ok(())
     }
@@ -101,14 +101,14 @@ impl App {
 
         // 「完全に同じ名前」が存在しない場合のみ類似チェックを行う
         // （完全一致する場合は自動リネームに任せるため警告をスキップ）
-        if !expected_path.exists() {
+        if !self.fs.exists(&expected_path)? {
             let similar = self
                 .organizer
                 .find_similar_folders(base_path, &folder_name)?;
             if !similar.is_empty() {
                 println!("\n💡 似た名前のフォルダが見つかりました:");
                 for path in &similar {
-                    println!("  - {}", path.display());
+                    println!("  - {}", self.fs.format_display_path(path));
                 }
                 if !confirm("このまま新しいフォルダとして作成しますか？ (y/n): ")?
                 {
