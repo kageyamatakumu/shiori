@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use std::fs::{self};
-use std::path::{self, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::domain::move_strategy::{DryRunStrategy, MoveStrategy, RealMoveStrategy};
@@ -56,7 +55,7 @@ impl FileOrganizer {
     ///
     /// フォルダの作成権限がない場合や、パスがファイルとして既に存在する場合にエラーを返します。
     pub fn ensure_work_path(&self) -> Result<()> {
-        if !self.work_path.exists() {
+        if !self.fs.exists(&self.work_path)? {
             println!("📁 {:?} を作成します。", self.work_path);
             self.fs
                 .create_dir_all(&self.work_path)
@@ -129,7 +128,7 @@ impl FileOrganizer {
         let target = target_name.normalized();
 
         for path in self.fs.read_dir(parent)? {
-            if !self.fs.is_dir(&path) {
+            if !self.fs.is_dir(&path)? {
                 continue;
             }
 
@@ -152,7 +151,7 @@ impl FileOrganizer {
         let mut matched_files = Vec::new();
 
         for path in self.fs.read_dir(&self.download_path)? {
-            if path == self.work_path || !path.is_file() {
+            if path == self.work_path || !self.fs.is_file(&path)? {
                 continue;
             }
             let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
@@ -191,13 +190,13 @@ impl FileOrganizer {
 
             let ext_folder = base_folder.path().join(ext.as_str());
 
-            if !strategy.is_dry_run() && !ext_folder.exists() {
+            if !strategy.is_dry_run() && !self.fs.exists(&ext_folder)? {
                 self.fs.create_dir_all(&ext_folder)?;
             }
 
             let destination = ext_folder.join(file.original());
 
-            self.execute_and_report(file, &source, &destination, &mut report, strategy);
+            self.execute_and_report(file, &source, &destination, &mut report, strategy)?;
         }
 
         Ok(report)
@@ -215,7 +214,7 @@ impl FileOrganizer {
         for file in files {
             let source = self.download_path.join(file.original());
             let destination = target_folder.path().join(file.original());
-            self.execute_and_report(file, &source, &destination, &mut report, strategy);
+            self.execute_and_report(file, &source, &destination, &mut report, strategy)?;
         }
         Ok(report)
     }
@@ -230,19 +229,19 @@ impl FileOrganizer {
         destination: &Path,
         report: &mut MoveReport,
         strategy: &impl MoveStrategy,
-    ) {
+    ) -> Result<()> {
         // 元ファイル消失チェック
-        if !source.exists() {
+        if !self.fs.exists(source)? {
             report
                 .failed
                 .push((file.clone(), "元ファイルが存在しない".to_string()));
-            return;
+            return Ok(());
         }
 
         // 上書き防止チェック
-        if destination.exists() {
+        if self.fs.exists(destination)? {
             report.skipped.push(file.clone());
-            return;
+            return Ok(());
         }
 
         // 指定された戦略に従ってファイル操作を実行
@@ -250,5 +249,7 @@ impl FileOrganizer {
             Ok(_) => report.moved.push((file.clone(), destination.to_path_buf())),
             Err(e) => report.failed.push((file.clone(), e.to_string())),
         }
+
+        Ok(())
     }
 }
