@@ -14,4 +14,6 @@ pub trait FileSystem {
     fn is_dir(&self, path: &Path) -> Result<bool>;
 
     fn is_file(&self, path: &Path) -> Result<bool>;
+
+    fn format_display_path(&self, path: &Path) -> String;
 }

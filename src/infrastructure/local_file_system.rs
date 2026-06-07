@@ -79,4 +79,20 @@ impl FileSystem for LocalFileSystem {
     fn is_file(&self, path: &Path) -> Result<bool> {
         Ok(path.is_file())
     }
+
+    /// 指定されたパスを、ユーザー（UI）表示向けに整形したパス文字列に変換する。
+    ///
+    /// ユーザーのホームディレクトリ（例: `/Users/username` や `C:\Users\username`）から
+    /// 始まるパスである場合、その部分を `~` に置き換えて短縮した文字列を返す。
+    /// ホームディレクトリ配下ではない、あるいは取得できない場合は、元のパスをそのまま文字列化する。
+    fn format_display_path(&self, path: &Path) -> String {
+        let path_str = path.to_string_lossy().into_owned();
+        if let Some(home) = dirs::home_dir() {
+            let home_str = home.to_string_lossy().into_owned();
+            if path_str.starts_with(&home_str) {
+                return path_str.replacen(&home_str, "~", 1);
+            }
+        }
+        path_str
+    }
 }
