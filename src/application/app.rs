@@ -185,11 +185,12 @@ impl App {
         let input = prompt_input("選択 (1 or 2): ")?;
         let mode = OrganizeMode::from_input(&input)?;
 
-        // ドライラン（シミュレーション）
         println!(
             "\n{}",
-            "🔍 実行内容をシミュレーションします...".bright_black()
+            "⚠️  選択モードに基づき、まずは移動のシミュレーション（確認）を行います。".yellow()
         );
+
+        // ドライラン（シミュレーション）
         let dry_run_report = match mode {
             OrganizeMode::Normal => self
                 .organizer
@@ -198,7 +199,7 @@ impl App {
                 .organizer
                 .move_files_by_extension_dry_run(&matched_files, &target_folder)?,
         };
-        dry_run_report.print(true);
+        dry_run_report.print(true, self.fs.as_ref());
 
         // 本番実行
         if confirm(&format!(

@@ -90,7 +90,7 @@ impl FileOrganizer {
         base_folder: &TargetFolder,
     ) -> Result<()> {
         let report = self.process_files_by_extension(files, base_folder, &RealMoveStrategy)?;
-        report.print(false);
+        report.print(false, self.fs.as_ref());
         Ok(())
     }
 
@@ -110,7 +110,7 @@ impl FileOrganizer {
     /// ファイルの移動処理中に I/O エラーが発生した場合にエラーを返します。
     pub fn move_files(&self, file_names: &[FileName], target_folder: &TargetFolder) -> Result<()> {
         let report = self.process_files_simple(file_names, target_folder, &RealMoveStrategy)?;
-        report.print(false);
+        report.print(false, self.fs.as_ref());
         Ok(())
     }
 
