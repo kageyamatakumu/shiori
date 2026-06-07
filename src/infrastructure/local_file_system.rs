@@ -68,7 +68,15 @@ impl FileSystem for LocalFileSystem {
     ///
     /// パスが存在し、かつディレクトリである場合に `true` を返す。
     /// 存在しない場合やファイルである場合は `false` を返す。
-    fn is_dir(&self, path: &Path) -> bool {
-        path.is_dir()
+    fn is_dir(&self, path: &Path) -> Result<bool> {
+        Ok(path.is_dir())
+    }
+
+    /// 指定されたパスがファイルかどうかを判定する。
+    ///
+    /// パスが存在し、かつファイルである場合に `true` を返す。
+    /// 存在しない場合やディレクトリである場合は `false` を返す。
+    fn is_file(&self, path: &Path) -> Result<bool> {
+        Ok(path.is_file())
     }
 }
