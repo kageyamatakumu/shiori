@@ -1,4 +1,5 @@
 use crate::application::organize_mode::OrganizeMode;
+use crate::domain::collision::FolderCollisionResolution;
 use crate::domain::{
     FileName, FileOrganizer, FileQuery, FileSystem, FolderName, TargetFolder,
     collision::CollisionStrategy,
@@ -13,7 +14,8 @@ use std::sync::Arc;
 /// ユーザーとの対話（入力・確認）と、ドメインロジックの実行フローを制御します。
 pub struct App {
     organizer: FileOrganizer,
-    folder_strategy: Box<dyn CollisionStrategy>,
+    folder_rename_strategy: Box<dyn CollisionStrategy>,
+    folder_merge_strategy: Box<dyn CollisionStrategy>,
     file_strategy: Box<dyn CollisionStrategy>,
     fs: Arc<dyn FileSystem>, // Removed as it is unused
 }
@@ -28,13 +30,15 @@ impl App {
     /// ホームディレクトリの取得に失敗した場合や、環境設定に不備がある場合にエラーを返します。
     pub fn new(
         organizer: FileOrganizer,
-        folder_strategy: Box<dyn CollisionStrategy>,
+        folder_rename_strategy: Box<dyn CollisionStrategy>,
+        folder_merge_strategy: Box<dyn CollisionStrategy>,
         file_strategy: Box<dyn CollisionStrategy>,
         fs: Arc<dyn FileSystem>,
     ) -> Self {
         Self {
             organizer,
-            folder_strategy,
+            folder_rename_strategy,
+            folder_merge_strategy,
             file_strategy,
             fs,
         }
@@ -103,32 +107,41 @@ impl App {
         let base_path = self.organizer.work_path();
         let expected_path = base_path.join(folder_name.as_str());
 
-        // 「完全に同じ名前」が存在しない場合のみ類似チェックを行う
-        // （完全一致する場合は自動リネームに任せるため警告をスキップ）
-        if !self.fs.exists(&expected_path)? {
-            let similar = self
-                .organizer
-                .find_similar_folders(base_path, &folder_name)?;
-            if !similar.is_empty() {
-                println!("\n💡 似た名前のフォルダが見つかりました:");
-                for path in &similar {
-                    println!("  - {}", self.fs.format_display_path(path));
-                }
-                if !confirm("このまま新しいフォルダとして作成しますか？ (y/n): ")?
-                {
-                    return Err(anyhow::anyhow!("ユーザーにより中止されました"));
-                }
+        let chosen_strategy: &dyn CollisionStrategy = if self.fs.exists(&expected_path)? {
+            // すでに同じフォルダがある場合
+            println!(
+                "\n📂 同名のフォルダ「{}」が既に存在します。",
+                folder_name.as_str()
+            );
+
+            let resolution = if confirm(
+                "既存のフォルダにそのまま追加しますか？ (y/n)\n※ 'n' を選ぶと自動リネームして別フォルダを作ります: ",
+            )? {
+                println!(
+                    "{}",
+                    "🔄 既存のフォルダへの追加が選択されました。".green()
+                );
+                FolderCollisionResolution::Merge
+            } else {
+                FolderCollisionResolution::Rename
+            };
+
+            match resolution {
+                FolderCollisionResolution::Merge => self.folder_merge_strategy.as_ref(),
+                FolderCollisionResolution::Rename => self.folder_rename_strategy.as_ref(),
             }
-        }
+        } else {
+            // まだフォルダがない（真っ新な状態）場合
+            self.folder_merge_strategy.as_ref()
+        };
 
         let target_folder = TargetFolder::new(
             base_path,
             expected_path.clone(),
-            self.folder_strategy.as_ref(),
+            chosen_strategy,
             self.fs.as_ref(),
         )?;
 
-        // 自動リネームが発生したかチェックしてユーザーに通知
         if target_folder.path() != expected_path {
             let adjusted_name = target_folder
                 .path()
