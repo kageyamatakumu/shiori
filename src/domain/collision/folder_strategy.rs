@@ -34,3 +34,18 @@ impl CollisionStrategy for FolderRenameStrategy {
         }
     }
 }
+
+pub struct NoRenameStrategy;
+
+impl NoRenameStrategy {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl CollisionStrategy for NoRenameStrategy {
+    fn resolve(&self, original_path: PathBuf, _fs: &dyn FileSystem) -> Result<PathBuf> {
+        // 何もせず、元のパスをそのまま Ok で返す
+        Ok(original_path)
+    }
+}

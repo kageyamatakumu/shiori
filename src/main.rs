@@ -60,12 +60,14 @@ fn run() -> Result<()> {
 fn build_app() -> Result<App> {
     let fs = Arc::new(LocalFileSystem);
 
-    let folder_strategy = Box::new(FolderRenameStrategy::new());
+    let folder_rename = Box::new(FolderRenameStrategy::new());
+    let folder_merge = Box::new(FileRenameStrategy);
     let file_strategy = Box::new(FileRenameStrategy::new());
 
     Ok(App::new(
         FileOrganizer::new(fs.clone())?,
-        folder_strategy,
+        folder_rename,
+        folder_merge,
         file_strategy,
         fs,
     ))
