@@ -1,6 +1,7 @@
 use crate::application::organize_mode::OrganizeMode;
 use crate::domain::{
-    CollisionStrategy, FileName, FileOrganizer, FileQuery, FileSystem, FolderName, TargetFolder,
+    FileName, FileOrganizer, FileQuery, FileSystem, FolderName, TargetFolder,
+    collision::CollisionStrategy,
 };
 use anyhow::Result;
 use colored::*;
@@ -12,7 +13,8 @@ use std::sync::Arc;
 /// ユーザーとの対話（入力・確認）と、ドメインロジックの実行フローを制御します。
 pub struct App {
     organizer: FileOrganizer,
-    strategy: Box<dyn CollisionStrategy>,
+    folder_strategy: Box<dyn CollisionStrategy>,
+    file_strategy: Box<dyn CollisionStrategy>,
     fs: Arc<dyn FileSystem>, // Removed as it is unused
 }
 
@@ -26,12 +28,14 @@ impl App {
     /// ホームディレクトリの取得に失敗した場合や、環境設定に不備がある場合にエラーを返します。
     pub fn new(
         organizer: FileOrganizer,
-        strategy: Box<dyn CollisionStrategy>,
+        folder_strategy: Box<dyn CollisionStrategy>,
+        file_strategy: Box<dyn CollisionStrategy>,
         fs: Arc<dyn FileSystem>,
     ) -> Self {
         Self {
             organizer,
-            strategy,
+            folder_strategy,
+            file_strategy,
             fs,
         }
     }
@@ -117,7 +121,12 @@ impl App {
             }
         }
 
-        let target_folder = TargetFolder::new(base_path, expected_path.clone(), &*self.strategy)?;
+        let target_folder = TargetFolder::new(
+            base_path,
+            expected_path.clone(),
+            self.folder_strategy.as_ref(),
+            self.fs.as_ref(),
+        )?;
 
         // 自動リネームが発生したかチェックしてユーザーに通知
         if target_folder.path() != expected_path {
@@ -192,12 +201,16 @@ impl App {
 
         // ドライラン（シミュレーション）
         let dry_run_report = match mode {
-            OrganizeMode::Normal => self
-                .organizer
-                .move_files_dry_run(&matched_files, &target_folder)?,
-            OrganizeMode::ByExtension => self
-                .organizer
-                .move_files_by_extension_dry_run(&matched_files, &target_folder)?,
+            OrganizeMode::Normal => self.organizer.move_files_dry_run(
+                &matched_files,
+                &target_folder,
+                self.file_strategy.as_ref(),
+            )?,
+            OrganizeMode::ByExtension => self.organizer.move_files_by_extension_dry_run(
+                &matched_files,
+                &target_folder,
+                self.file_strategy.as_ref(),
+            )?,
         };
         dry_run_report.print(true, self.fs.as_ref());
 
@@ -210,12 +223,16 @@ impl App {
                 self.fs.create_dir_all(target_folder.path())?;
             }
             match mode {
-                OrganizeMode::Normal => {
-                    self.organizer.move_files(&matched_files, &target_folder)?
-                }
-                OrganizeMode::ByExtension => self
-                    .organizer
-                    .move_files_by_extension(&matched_files, &target_folder)?,
+                OrganizeMode::Normal => self.organizer.move_files(
+                    &matched_files,
+                    &target_folder,
+                    self.file_strategy.as_ref(),
+                )?,
+                OrganizeMode::ByExtension => self.organizer.move_files_by_extension(
+                    &matched_files,
+                    &target_folder,
+                    self.file_strategy.as_ref(),
+                )?,
             }
             println!("\n{}", "✨ 整理が完了しました！".green().bold());
         } else {

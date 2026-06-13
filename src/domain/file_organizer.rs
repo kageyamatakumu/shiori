@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::domain::move_strategy::{DryRunStrategy, MoveStrategy, RealMoveStrategy};
 use crate::domain::{FileSystem, MoveReport};
-use crate::{FileName, TargetFolder};
+use crate::{CollisionStrategy, FileName, TargetFolder};
 
 use super::FileQuery;
 use super::FolderName;
@@ -73,8 +73,9 @@ impl FileOrganizer {
         &self,
         files: &[FileName],
         base_folder: &TargetFolder,
+        file_strategy: &dyn CollisionStrategy,
     ) -> Result<MoveReport> {
-        self.process_files_by_extension(files, base_folder, &DryRunStrategy)
+        self.process_files_by_extension(files, base_folder, &DryRunStrategy, file_strategy)
     }
 
     /// 拡張子ごとの自動仕分けを実際に実行します。
@@ -88,8 +89,10 @@ impl FileOrganizer {
         &self,
         files: &[FileName],
         base_folder: &TargetFolder,
+        file_strategy: &dyn CollisionStrategy,
     ) -> Result<()> {
-        let report = self.process_files_by_extension(files, base_folder, &RealMoveStrategy)?;
+        let report =
+            self.process_files_by_extension(files, base_folder, &RealMoveStrategy, file_strategy)?;
         report.print(false, self.fs.as_ref());
         Ok(())
     }
@@ -99,8 +102,9 @@ impl FileOrganizer {
         &self,
         file_names: &[FileName],
         target_folder: &TargetFolder,
+        file_strategy: &dyn CollisionStrategy,
     ) -> Result<MoveReport> {
-        self.process_files_simple(file_names, target_folder, &DryRunStrategy)
+        self.process_files_simple(file_names, target_folder, &DryRunStrategy, file_strategy)
     }
 
     /// 特定のフォルダへの一括移動を実際に実行します。
@@ -108,8 +112,14 @@ impl FileOrganizer {
     /// # Errors
     ///
     /// ファイルの移動処理中に I/O エラーが発生した場合にエラーを返します。
-    pub fn move_files(&self, file_names: &[FileName], target_folder: &TargetFolder) -> Result<()> {
-        let report = self.process_files_simple(file_names, target_folder, &RealMoveStrategy)?;
+    pub fn move_files(
+        &self,
+        file_names: &[FileName],
+        target_folder: &TargetFolder,
+        file_strategy: &dyn CollisionStrategy,
+    ) -> Result<()> {
+        let report =
+            self.process_files_simple(file_names, target_folder, &RealMoveStrategy, file_strategy)?;
         report.print(false, self.fs.as_ref());
         Ok(())
     }
@@ -174,6 +184,7 @@ impl FileOrganizer {
         files: &[FileName],
         base_folder: &TargetFolder,
         strategy: &impl MoveStrategy,
+        file_strategy: &dyn CollisionStrategy,
     ) -> Result<MoveReport> {
         let mut report = MoveReport::new(files.len());
 
@@ -196,7 +207,9 @@ impl FileOrganizer {
 
             let destination = ext_folder.join(file.original());
 
-            self.execute_and_report(file, &source, &destination, &mut report, strategy)?;
+            let safe_destination = file_strategy.resolve(destination, self.fs.as_ref())?;
+
+            self.execute_and_report(file, &source, &safe_destination, &mut report, strategy)?;
         }
 
         Ok(report)
@@ -208,13 +221,15 @@ impl FileOrganizer {
         files: &[FileName],
         target_folder: &TargetFolder,
         strategy: &impl MoveStrategy,
+        file_strategy: &dyn CollisionStrategy,
     ) -> Result<MoveReport> {
         let mut report = MoveReport::new(files.len());
 
         for file in files {
             let source = self.download_path.join(file.original());
             let destination = target_folder.path().join(file.original());
-            self.execute_and_report(file, &source, &destination, &mut report, strategy)?;
+            let safe_destination = file_strategy.resolve(destination, self.fs.as_ref())?;
+            self.execute_and_report(file, &source, &safe_destination, &mut report, strategy)?;
         }
         Ok(report)
     }

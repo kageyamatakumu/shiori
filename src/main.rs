@@ -1,7 +1,9 @@
 use anyhow::Result;
 use colored::Colorize;
 use shiori::{
-    FileOrganizer, application::App, domain::SequenceRenameStrategy,
+    FileOrganizer,
+    application::App,
+    domain::collision::{FileRenameStrategy, FolderRenameStrategy},
     infrastructure::local_file_system::LocalFileSystem,
 };
 use std::sync::Arc;
@@ -58,9 +60,13 @@ fn run() -> Result<()> {
 fn build_app() -> Result<App> {
     let fs = Arc::new(LocalFileSystem);
 
+    let folder_strategy = Box::new(FolderRenameStrategy::new());
+    let file_strategy = Box::new(FileRenameStrategy::new());
+
     Ok(App::new(
         FileOrganizer::new(fs.clone())?,
-        Box::new(SequenceRenameStrategy::new()),
+        folder_strategy,
+        file_strategy,
         fs,
     ))
 }
