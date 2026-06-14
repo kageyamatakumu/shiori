@@ -3,7 +3,7 @@ use colored::Colorize;
 use shiori::{
     FileOrganizer,
     application::App,
-    domain::collision::{FileRenameStrategy, FolderRenameStrategy},
+    domain::collision::{FileRenameStrategy, FolderRenameStrategy, NoRenameStrategy},
     infrastructure::local_file_system::LocalFileSystem,
 };
 use std::sync::Arc;
@@ -61,7 +61,7 @@ fn build_app() -> Result<App> {
     let fs = Arc::new(LocalFileSystem);
 
     let folder_rename = Box::new(FolderRenameStrategy::new());
-    let folder_merge = Box::new(FileRenameStrategy);
+    let folder_merge = Box::new(NoRenameStrategy);
     let file_strategy = Box::new(FileRenameStrategy::new());
 
     Ok(App::new(
