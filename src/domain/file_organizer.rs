@@ -254,8 +254,11 @@ impl FileOrganizer {
         }
 
         // 上書き防止チェック
-        if self.fs.exists(destination)? {
-            report.skipped.push(file.clone());
+        if !strategy.is_dry_run() && self.fs.exists(destination)? {
+            report.failed.push((
+                file.clone(),
+                "移動先に同名ファイルがまだ存在します".to_string(),
+            ));
             return Ok(());
         }
 

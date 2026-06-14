@@ -65,7 +65,11 @@ impl MoveReport {
                 BTreeMap::new();
             for (file, dest_path) in &self.moved {
                 if let Some(parent_dir) = dest_path.parent() {
-                    let file_name_str = file.original().to_string();
+                    let file_name_str = dest_path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or_else(|| file.original())
+                        .to_string();
 
                     // 拡張子分類モードか通常モードかを判定するために、ファイル拡張子を取得
                     if let Some(ext) = file.extension() {
