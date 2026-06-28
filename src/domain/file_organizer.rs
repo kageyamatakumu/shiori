@@ -90,11 +90,11 @@ impl FileOrganizer {
         files: &[FileName],
         base_folder: &TargetFolder,
         file_strategy: &dyn CollisionStrategy,
-    ) -> Result<()> {
+    ) -> Result<MoveReport> {
         let report =
             self.process_files_by_extension(files, base_folder, &RealMoveStrategy, file_strategy)?;
         report.print(false, self.fs.as_ref());
-        Ok(())
+        Ok(report)
     }
 
     /// 特定のフォルダへの一括移動をシミュレーションします。
@@ -117,11 +117,11 @@ impl FileOrganizer {
         file_names: &[FileName],
         target_folder: &TargetFolder,
         file_strategy: &dyn CollisionStrategy,
-    ) -> Result<()> {
+    ) -> Result<MoveReport> {
         let report =
             self.process_files_simple(file_names, target_folder, &RealMoveStrategy, file_strategy)?;
         report.print(false, self.fs.as_ref());
-        Ok(())
+        Ok(report)
     }
 
     // --- Search Logic ---

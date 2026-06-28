@@ -1,0 +1,60 @@
+==================================================
+Design Porter 実行履歴 [2026-06-27 15:00:00]
+==================================================
+[SUCCESS]
+FROM: /Users/takumu/Downloads/bananaA_1.jpeg
+TO:   /Users/takumu/Downloads/test_storage/banana/jpeg/bananaA_1.jpeg
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_1_1.txt
+TO:   /Users/takumu/Downloads/test_storage/banana/txt/banana_1_1.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/bananaA.jpeg
+TO:   /Users/takumu/Downloads/test_storage/banana/jpeg/bananaA.jpeg
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana.jpeg
+TO:   /Users/takumu/Downloads/test_storage/banana/jpeg/banana.jpeg
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana.txt
+TO:   /Users/takumu/Downloads/test_storage/banana/txt/banana.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_2.txt
+TO:   /Users/takumu/Downloads/test_storage/banana/txt/banana_2.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/bananaA_2.jpeg
+TO:   /Users/takumu/Downloads/test_storage/banana/jpeg/bananaA_2.jpeg
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_1.txt
+TO:   /Users/takumu/Downloads/test_storage/banana/txt/banana_1.txt
+--------------------------------------------------
+★万が一元に戻したい場合は、上記の「TO」のファイルを「FROM」の場所へ戻してください。
+
+
+==================================================
+shiori 実行履歴 [2026-06-27 15:22:11]
+==================================================
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_1_1.txt
+TO:   /Users/takumu/Downloads/test_storage/banana_1/banana_1_1.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana.txt
+TO:   /Users/takumu/Downloads/test_storage/banana_1/banana.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_2.txt
+TO:   /Users/takumu/Downloads/test_storage/banana_1/banana_2.txt
+--------------------------------------------------
+[SUCCESS]
+FROM: /Users/takumu/Downloads/banana_1.txt
+TO:   /Users/takumu/Downloads/test_storage/banana_1/banana_1.txt
+--------------------------------------------------
+★万が一元に戻したい場合は、上記の「TO」のファイルを「FROM」の場所へ戻してください。
+
+

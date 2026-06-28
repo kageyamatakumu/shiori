@@ -1,5 +1,6 @@
 use crate::application::organize_mode::OrganizeMode;
 use crate::domain::collision::FolderCollisionResolution;
+use crate::domain::history::{HistoryRepository, MoveRecord};
 use crate::domain::{
     FileName, FileOrganizer, FileQuery, FileSystem, FolderName, TargetFolder,
     collision::CollisionStrategy,
@@ -18,6 +19,7 @@ pub struct App {
     folder_merge_strategy: Box<dyn CollisionStrategy>,
     file_strategy: Box<dyn CollisionStrategy>,
     fs: Arc<dyn FileSystem>, // Removed as it is unused
+    history_repo: Box<dyn HistoryRepository>,
 }
 
 impl App {
@@ -34,6 +36,7 @@ impl App {
         folder_merge_strategy: Box<dyn CollisionStrategy>,
         file_strategy: Box<dyn CollisionStrategy>,
         fs: Arc<dyn FileSystem>,
+        history_repo: Box<dyn HistoryRepository>,
     ) -> Self {
         Self {
             organizer,
@@ -41,6 +44,7 @@ impl App {
             folder_merge_strategy,
             file_strategy,
             fs,
+            history_repo,
         }
     }
 
@@ -79,7 +83,7 @@ impl App {
     /// 整理用のワークスペースパスが存在することを確認し、画面に現在の設定を表示します。
     fn setup(&self) -> Result<()> {
         self.organizer.ensure_work_path()?;
-        println!("=== Design Porter: ファイル整理ツール ===");
+        println!("=== Shiori: ファイル整理ツール ===");
         println!(
             "📂 ダウンロードフォルダ: {}",
             self.fs.format_display_path(self.organizer.download_path())
@@ -117,10 +121,7 @@ impl App {
             let resolution = if confirm(
                 "既存のフォルダにそのまま追加しますか？ (y/n)\n※ 'n' を選ぶと自動リネームして別フォルダを作ります: ",
             )? {
-                println!(
-                    "{}",
-                    "🔄 既存のフォルダへの追加が選択されました。".green()
-                );
+                println!("{}", "🔄 既存のフォルダへの追加が選択されました。".green());
                 FolderCollisionResolution::Merge
             } else {
                 FolderCollisionResolution::Rename
@@ -235,7 +236,7 @@ impl App {
             if !self.fs.exists(target_folder.path())? {
                 self.fs.create_dir_all(target_folder.path())?;
             }
-            match mode {
+            let actual_report = match mode {
                 OrganizeMode::Normal => self.organizer.move_files(
                     &matched_files,
                     &target_folder,
@@ -246,8 +247,26 @@ impl App {
                     &target_folder,
                     self.file_strategy.as_ref(),
                 )?,
+            };
+
+            // 安全に移動したことと同義なので、このシミュレーション結果を実績データに変換。
+            let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+            let mut records = Vec::new();
+
+            for (file_name, to_path) in &actual_report.moved {
+                let from_path = self.organizer.download_path().join(file_name.original());
+                records.push(MoveRecord::new(
+                    timestamp.clone(),
+                    from_path,
+                    to_path.clone(),
+                ));
             }
+
+            // ログファイルへの永続化を実行
+            self.history_repo.save_all(&records)?;
+
             println!("\n{}", "✨ 整理が完了しました！".green().bold());
+            println!("📝 実行履歴を `porter_history.log` に記録しました。");
         } else {
             println!(
                 "\n{}",

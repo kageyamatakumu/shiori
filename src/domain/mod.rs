@@ -5,6 +5,7 @@ pub mod file_organizer;
 pub mod file_query;
 pub mod file_system;
 pub mod folder_name;
+pub mod history;
 pub mod move_report;
 pub mod move_strategy;
 pub mod target_folder;

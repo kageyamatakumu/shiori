@@ -5,8 +5,9 @@ use shiori::{
     application::App,
     domain::collision::{FileRenameStrategy, FolderRenameStrategy, NoRenameStrategy},
     infrastructure::local_file_system::LocalFileSystem,
+    infrastructure::local_history_repository::LocalHistoryRepository,
 };
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 /// # Shiori (栞)
 ///
 /// ダウンロードフォルダ内のファイルを、ルールに基づいて指定のワークスペースへ
@@ -63,6 +64,8 @@ fn build_app() -> Result<App> {
     let folder_rename = Box::new(FolderRenameStrategy::new());
     let folder_merge = Box::new(NoRenameStrategy);
     let file_strategy = Box::new(FileRenameStrategy::new());
+    let log_path = PathBuf::from("porter_history.log");
+    let history_repo = Box::new(LocalHistoryRepository::new(log_path));
 
     Ok(App::new(
         FileOrganizer::new(fs.clone())?,
@@ -70,6 +73,7 @@ fn build_app() -> Result<App> {
         folder_merge,
         file_strategy,
         fs,
+        history_repo,
     ))
 }
 
