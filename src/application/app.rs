@@ -7,9 +7,9 @@ use crate::domain::{
 };
 use anyhow::Result;
 use colored::*;
+use dialoguer::{Select, theme::ColorfulTheme};
 use std::io::{self, Write};
 use std::sync::Arc;
-
 /// `Shiori` アプリケーションの実行を管理するメイン構造体。
 ///
 /// ユーザーとの対話（入力・確認）と、ドメインロジックの実行フローを制御します。
@@ -119,7 +119,7 @@ impl App {
             );
 
             let resolution = if confirm(
-                "既存のフォルダにそのまま追加しますか？ (y/n)\n※ 'n' を選ぶと自動リネームして別フォルダを作ります: ",
+                "既存のフォルダにそのまま追加しますか？\n※ 'No' を選ぶと自動リネームして別フォルダを作ります: ",
             )? {
                 println!("{}", "🔄 既存のフォルダへの追加が選択されました。".green());
                 FolderCollisionResolution::Merge
@@ -202,11 +202,19 @@ impl App {
         }
 
         // 整理方法の選択
-        println!("\n📦 整理方法を選択してください:");
-        println!("1: 通常移動");
-        println!("2: 拡張子ごとに分類");
-        let input = prompt_input("選択 (1 or 2): ")?;
-        let mode = OrganizeMode::from_input(&input)?;
+        let selections = &["1: 通常移動", "2: 拡張子ごとに分類"];
+        println!("\n📦 整理方法を選択してください (↑↓キーで選択、Enterで決定):");
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .items(selections)
+            .default(0) // 最初は「1: 通常移動」にカーソルを合わせておく
+            .interact()?; // ユーザーの入力を待つ（0から始まるインデックスが返る）
+
+        // 選択されたインデックス（0か1）に基づいてモードを決定
+        let mode = match selection {
+            0 => OrganizeMode::Normal,
+            1 => OrganizeMode::ByExtension,
+            _ => unreachable!(), // 2択なのでここには絶対に来ない
+        };
 
         println!(
             "\n{}",
@@ -230,7 +238,7 @@ impl App {
 
         // 本番実行
         if confirm(&format!(
-            "\n🚀 上記の内容で実際に移動を開始しますか？ ({}) (y/n): ",
+            "\n🚀 上記の内容で実際に移動を開始しますか？ ({}) ",
             "本番実行".red().bold()
         ))? {
             if !self.fs.exists(target_folder.path())? {
@@ -321,15 +329,15 @@ fn prompt_input(message: &str) -> Result<String> {
 
 /// ユーザーに Yes/No の確認を求めます。'y' または 'yes' で true を返します。
 fn confirm(message: &str) -> Result<bool> {
-    loop {
-        let input: String = prompt_input(message)?;
+    let items = &["Yes", "No"];
 
-        match input.trim().to_lowercase().as_str() {
-            "y" | "yes" => return Ok(true),
-            "n" | "no" => return Ok(false),
-            _ => {
-                println!("⚠️ y / n で入力してください。");
-            }
-        }
-    }
+    println!("\n{}", message);
+
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .items(items)
+        .default(0) // 最初は Yes にカーソルを合わせる
+        .interact()?;
+
+    // 0番目(Yes)なら true、1番目(No)なら false を返す
+    Ok(selection == 0)
 }
