@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::domain::FileSystem;
+use crate::domain::file_system::{FileOrganizerFs, FileQuery, FileRenamer};
 
 /// ローカル環境のファイルシステムへアクセスする実装。
 ///
@@ -13,7 +13,8 @@ use crate::domain::FileSystem;
 /// infrastructure 層に配置される。
 pub struct LocalFileSystem;
 
-impl FileSystem for LocalFileSystem {
+// 参照・判定系（クエリ）のインターフェースを実装
+impl FileQuery for LocalFileSystem {
     /// 指定されたディレクトリを再帰的に作成する。
     ///
     /// 親ディレクトリが存在しない場合も含めて作成を行う。
@@ -22,46 +23,8 @@ impl FileSystem for LocalFileSystem {
     ///
     /// ディレクトリ作成権限がない場合や、
     /// 不正なパスが指定された場合にエラーを返す。
-    fn create_dir_all(&self, path: &Path) -> Result<()> {
-        fs::create_dir_all(path)?;
-        Ok(())
-    }
-
-    /// 指定されたパスが存在するか確認する。
-    ///
-    /// ファイル・ディレクトリの種別は問わず、
-    /// パスが存在していれば `true` を返す。
     fn exists(&self, path: &Path) -> Result<bool> {
         Ok(path.exists())
-    }
-
-    /// 指定されたディレクトリ内のエントリ一覧を取得する。
-    ///
-    /// 返却される `PathBuf` には、ファイルとディレクトリの両方が含まれる。
-    ///
-    /// # Errors
-    ///
-    /// ディレクトリの読み取り権限がない場合や、
-    /// 指定パスが存在しない場合にエラーを返す。
-    fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>> {
-        let entries = fs::read_dir(path)?
-            .map(|entry| entry.map(|e| e.path()))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(entries)
-    }
-
-    /// ファイルを別のパスへ移動する。
-    ///
-    /// 実体としては `rename` システムコールを利用している。
-    ///
-    /// # Errors
-    ///
-    /// 移動元ファイルが存在しない場合や、
-    /// 移動先への書き込み権限がない場合にエラーを返す。
-    fn move_file(&self, from: &Path, to: &Path) -> Result<()> {
-        fs::rename(from, to)?;
-        Ok(())
     }
 
     /// 指定されたパスがディレクトリかどうかを判定する。
@@ -80,6 +43,22 @@ impl FileSystem for LocalFileSystem {
         Ok(path.is_file())
     }
 
+    /// 指定されたディレクトリ内のエントリ一覧を取得する。
+    ///
+    /// 返却される `PathBuf` には、ファイルとディレクトリの両方が含まれる。
+    ///
+    /// # Errors
+    ///
+    /// ディレクトリの読み取り権限がない場合や、
+    /// 指定パスが存在しない場合にエラーを返す。
+    fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>> {
+        let entries = fs::read_dir(path)?
+            .map(|entry| entry.map(|e| e.path()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(entries)
+    }
+
     /// 指定されたパスを、ユーザー（UI）表示向けに整形したパス文字列に変換する。
     ///
     /// ユーザーのホームディレクトリ（例: `/Users/username` や `C:\Users\username`）から
@@ -94,5 +73,44 @@ impl FileSystem for LocalFileSystem {
             }
         }
         path_str
+    }
+}
+
+// ファイル整理（移動）系のインターフェースを実装
+impl FileOrganizerFs for LocalFileSystem {
+    /// 指定されたディレクトリを再帰的に作成する。
+    ///
+    /// 親ディレクトリが存在しない場合も含めて作成を行う。
+    ///
+    /// # Errors
+    ///
+    /// ディレクトリ作成権限がない場合や、
+    fn create_dir_all(&self, path: &Path) -> Result<()> {
+        fs::create_dir_all(path)?;
+        Ok(())
+    }
+
+    /// ファイルを別のパスへ移動する。
+    ///
+    /// 実体としては `rename` システムコールを利用している。
+    ///
+    /// # Errors
+    ///
+    /// 移動元ファイルが存在しない場合や、
+    /// 移動先への書き込み権限がない場合にエラーを返す。
+    fn move_file(&self, from: &Path, to: &Path) -> Result<()> {
+        fs::rename(from, to)?;
+        Ok(())
+    }
+}
+
+// 事前リネーム系のインターフェースを実装
+impl FileRenamer for LocalFileSystem {
+    /// ファイル名の大幅な変更、またはファイル自体の移動を行う。
+    ///
+    /// 内部的には `move_file` と同様に `fs::rename` を利用している。
+    fn rename(&self, from: &Path, to: &Path) -> Result<()> {
+        fs::rename(from, to)?;
+        Ok(())
     }
 }

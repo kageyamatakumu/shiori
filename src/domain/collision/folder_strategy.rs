@@ -1,5 +1,5 @@
 use super::CollisionStrategy;
-use crate::domain::FileSystem;
+use crate::domain::file_system::FileQuery;
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -12,7 +12,7 @@ impl FolderRenameStrategy {
 }
 
 impl CollisionStrategy for FolderRenameStrategy {
-    fn resolve(&self, original_path: PathBuf, fs: &dyn FileSystem) -> Result<PathBuf> {
+    fn resolve(&self, original_path: PathBuf, fs: &dyn FileQuery) -> Result<PathBuf> {
         if !fs.exists(&original_path)? {
             return Ok(original_path);
         }
@@ -44,7 +44,7 @@ impl NoRenameStrategy {
 }
 
 impl CollisionStrategy for NoRenameStrategy {
-    fn resolve(&self, original_path: PathBuf, _fs: &dyn FileSystem) -> Result<PathBuf> {
+    fn resolve(&self, original_path: PathBuf, _fs: &dyn FileQuery) -> Result<PathBuf> {
         // 何もせず、元のパスをそのまま Ok で返す
         Ok(original_path)
     }
