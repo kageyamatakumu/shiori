@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::FileName;
-use crate::domain::FileSystem;
+use crate::domain::file_system::FileQuery;
 
 /// ファイル移動処理の結果、またはシミュレーション結果を保持・表示するためのレポート構造体。
 pub struct MoveReport {
@@ -35,7 +35,7 @@ impl MoveReport {
     ///
     /// # Arguments
     /// * `is_dry_run` - `true` の場合、実際の移動を行わない「シミュレーション（予定）」として表示します。
-    pub fn print(&self, is_dry_run: bool, fs: &dyn FileSystem) {
+    pub fn print(&self, is_dry_run: bool, fs: &dyn FileQuery) {
         // --- タイトルの決定 ---
         let title = if is_dry_run {
             "--- 🔍 実行シミュレーション (ドライラン) ---".cyan().bold()

@@ -1,4 +1,4 @@
-use crate::domain::FileSystem;
+use crate::domain::file_system::FileQuery;
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -11,7 +11,7 @@ pub use folder_strategy::NoRenameStrategy;
 
 /// 衝突解決（リネーム）の戦略を定義するトレイト
 pub trait CollisionStrategy {
-    fn resolve(&self, path: PathBuf, fs: &dyn FileSystem) -> Result<PathBuf>;
+    fn resolve(&self, path: PathBuf, fs: &dyn FileQuery) -> Result<PathBuf>;
 }
 
 /// 既存フォルダと衝突した際の処理方針

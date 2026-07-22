@@ -1,7 +1,8 @@
 use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
-use crate::domain::{CollisionStrategy, FileSystem};
+use crate::domain::CollisionStrategy;
+use crate::domain::file_system::FileQuery;
 
 #[derive(Debug, Clone)]
 pub struct TargetFolder {
@@ -13,7 +14,7 @@ impl TargetFolder {
         base: &Path,
         original_path: PathBuf,
         folder_strategy: &dyn CollisionStrategy,
-        fs: &dyn FileSystem,
+        fs: &dyn FileQuery,
     ) -> Result<Self> {
         let final_path = folder_strategy.resolve(original_path, fs)?;
         Self::validate_bounds(base, &final_path)?;

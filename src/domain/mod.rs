@@ -8,6 +8,7 @@ pub mod folder_name;
 pub mod history;
 pub mod move_report;
 pub mod move_strategy;
+pub mod rename;
 pub mod target_folder;
 
 pub use collision::{CollisionStrategy, FileRenameStrategy, FolderRenameStrategy};
@@ -15,7 +16,6 @@ pub use extension::Extension;
 pub use file_name::FileName;
 pub use file_organizer::FileOrganizer;
 pub use file_query::FileQuery;
-pub use file_system::FileSystem;
 pub use folder_name::FolderName;
 pub use move_report::MoveReport;
 pub use move_strategy::{DryRunStrategy, MoveStrategy, RealMoveStrategy};
